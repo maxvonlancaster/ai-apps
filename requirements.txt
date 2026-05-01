@@ -4,3 +4,4 @@ streamlit
 pandas>=2.2,<2.4
 numpy>=1.26,<2
 shap<0.50
+xgboost==3.0.5
