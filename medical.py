@@ -11,13 +11,14 @@ import torch.nn as nn
 from sentence_transformers import SentenceTransformer
 
 def resolve_paths():
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[0]
+    print(root)
     return {
         "root": root,
         "data_path": root / "resources" / "medical" / "disease_diagnosis.csv",
         "text_path": root / "resources" / "medical" / "symptoms_text_2.txt",
         "combined_models": root / "models" / "medical",
-        "hybrid_model": root / "src" / "medical-nn" / "complete_hybrid_model.pth",
+        "hybrid_model": root / "resources" / "medical" / "complete_hybrid_model.pth",
     }
 
 
