@@ -116,23 +116,13 @@ def load_hybrid_model(checkpoint_path):
 
 
 @st.cache_resource
-def load_glove_corpus():
-    import gensim.downloader as api
-
-    return api.load("glove-wiki-gigaword-100")
+def load_text_encoder():
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 
-def tokenize_text(text):
-    return re.findall(r"\b[a-zA-Z0-9']+\b", str(text).lower())
-
-
-def vectorize_symptoms(text, corpus):
-    tokens = tokenize_text(text)
-    vectors = [corpus[word] for word in tokens if word in corpus]
-    if len(vectors) == 0:
-        return np.zeros(corpus.vector_size, dtype=float)
-    return np.mean(vectors, axis=0)
-
+def vectorize_text(text, encoder):
+    embedding = encoder.encode([text], show_progress_bar=False)
+    return np.array(embedding[0], dtype=float)
 
 @st.cache_data
 def fit_label_encoders(df):
@@ -148,7 +138,7 @@ def fit_label_encoders(df):
 
 
 def build_combined_features(user_inputs, gender_encoder, corpus, xgb_model, log_model, meta_model, treatment_encoder):
-    text_vector = vectorize_symptoms(user_inputs["symptoms_text"], corpus)
+    text_vector = vectorize_text(user_inputs["symptoms_text"], corpus)
 
     numeric_values = [
         user_inputs["Oxygen_Saturation_%"],
@@ -367,7 +357,7 @@ def main():
             label, class_probs, numeric_array, text_vector = build_combined_features(
                 user_inputs,
                 gender_encoder,
-                load_glove_corpus(),
+                load_text_encoder(),
                 xgb_model,
                 log_model,
                 meta_model,
