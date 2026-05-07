@@ -90,17 +90,60 @@ class HybridMedicalModel(nn.Module):
 @st.cache_resource
 def load_hybrid_model(checkpoint_path):
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state_dict = checkpoint['model_state_dict']
+    text_branch_layers = [k for k in state_dict.keys() if 'text_branch' in k and 'weight' in k and int(k.split('.')[1]) % 2 == 0]
+    num_branch_layers = [k for k in state_dict.keys() if 'num_branch' in k and 'weight' in k and int(k.split('.')[1]) % 2 == 0]
+
+    text_hidden1 = state_dict['text_branch.0.weight'].shape[0]
+    num_hidden1 = state_dict['num_branch.0.weight'].shape[0]
+    second_linear_key_text = None
+    for key in text_branch_layers:
+        if key != 'text_branch.0.weight':
+            second_linear_key_text = key
+            break
+
+    if second_linear_key_text:
+        text_hidden2 = state_dict[second_linear_key_text].shape[0]
+    else:
+        # Fallback: try common indices
+        try:
+            text_hidden2 = state_dict['text_branch.4.weight'].shape[0]
+        except KeyError:
+            text_hidden2 = state_dict['text_branch.5.weight'].shape[0]
+
+    second_linear_key_num = None
+    for key in num_branch_layers:
+        if key != 'num_branch.0.weight':
+            second_linear_key_num = key
+            break
+
+    if second_linear_key_num:
+        num_hidden2 = state_dict[second_linear_key_num].shape[0]
+    else:
+        try:
+            num_hidden2 = state_dict['num_branch.4.weight'].shape[0]
+        except KeyError:
+            num_hidden2 = state_dict['num_branch.5.weight'].shape[0]
+
+    # Detect input dimensions
+    text_dim = state_dict['text_branch.0.weight'].shape[1]
+    num_dim = state_dict['num_branch.0.weight'].shape[1]
+
+    # Hidden dims for each branch
+    hidden_dims_text = [text_hidden1, text_hidden2]
+    hidden_dims_num = [num_hidden1, num_hidden2]
+
     config = checkpoint.get("model_config", {})
-    hidden_dims = config.get("hidden_dims", [128, 64])
-    text_dim = config.get("text_dim")
-    num_dim = config.get("num_dim")
+    # hidden_dims = config.get("hidden_dims", [256, 128])
+    # text_dim = config.get("text_dim")
+    # num_dim = config.get("num_dim")
     dropout = config.get("dropout", 0.3)
 
     model = HybridMedicalModel(
         text_dim=text_dim,
         num_dim=num_dim,
-        hidden_dims_text=hidden_dims,
-        hidden_dims_num=hidden_dims,
+        hidden_dims_text=hidden_dims_text,
+        hidden_dims_num=hidden_dims_num,
         dropout=dropout,
     )
     model.load_state_dict(checkpoint["model_state_dict"])
